@@ -1,0 +1,12 @@
+# Binaries
+bin/
+*.exe
+
+# Environment variables
+.env
+
+# Go build cache
+*.out
+
+# VS Code
+.vscode/
