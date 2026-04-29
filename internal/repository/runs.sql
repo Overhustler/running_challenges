@@ -1,4 +1,4 @@
--- name: create_run :one
+-- name: CreateRun :one
 INSERT INTO runs(distance, start_time, end_time, perceived_effort, notes, user_id)
 VALUES(
     $1,
@@ -9,32 +9,32 @@ VALUES(
     $6
 ) RETURNING *;
 
--- name: get_run :one
+-- name: GetRun :one
 SELECT * FROM runs
 WHERE id = $1;
 
--- name: get_runs_by_user_id :many
+-- name: GetRunsByUserID :many
 SELECT * FROM runs
 where user_id = $1;
 
--- name: get_runs_by_date_range :many
+-- name: GetRunsForDateRange :many
 SELECT * FROM runs
 WHERE start_time BETWEEN $1 AND $2 
 ORDER BY start_time DESC;
 
--- name: get_runs_recent :many
+-- name: GetRecentRuns :many
 SELECT * FROM runs 
 WHERE start_time > $1
 ORDER BY start_time DESC
 LIMIT $2;
 
--- name: get_runs_by_date_range_user_id :many
+-- name: GetRunsByDateRangeUserID :many
 SELECT * FROM runs
 WHERE (start_time BETWEEN $1 AND $2) 
 AND user_id = $3 
 ORDER BY start_time DESC;
 
--- name: get_runs_recent_user_id :many
+-- name: GetRecentRunsUserID :many
 SELECT * FROM runs 
 WHERE start_time > $1 AND user_id = $2
 ORDER BY start_time DESC

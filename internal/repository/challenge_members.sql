@@ -1,19 +1,19 @@
--- name: join_challenge :one
+-- name: JoinChallenge :one
 INSERT INTO challenge_members(challenge_id, user_id)
 VALUES(
     $1,
     $2
 ) RETURNING *;
 
--- name: get_user_challenges :many
+-- name: GetUserChallenge :many
 SELECT * FROM challenge_members
 WHERE user_id = $1;
 
--- name: get_all_challenge_users :many
+-- name: GetAlllCHallengesMembers :many
 SELECT * FROM challenge_members
 WHERE challenge_id = $1;
 
--- name: get_leaderboard :many
+-- name: GetLeaderBoard :many
 SELECT cm.user_id, SUM(r.distance) AS total_km
 FROM challenge_members AS cm
 JOIN runs AS r ON cm.user_id = r.user_id
@@ -24,6 +24,6 @@ GROUP BY cm.user_id
 ORDER BY total_km DESC
 LIMIT $2;
 
--- name: leave_challenge :exec
+-- name: LeaveChallenge :exec
 DELETE FROM challenge_members
 WHERE user_id = $1 AND challenge_id = $2;

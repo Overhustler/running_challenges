@@ -3,13 +3,198 @@
 //   sqlc v1.31.1
 // source: challenges.sql
 
-package repository
+package db
 
 import (
 	"context"
 
 	"github.com/jackc/pgx/v5/pgtype"
 )
+
+const deleteChallenge = `-- name: DeleteChallenge :exec
+DELETE FROM challenges 
+WHERE id = $1
+`
+
+func (q *Queries) DeleteChallenge(ctx context.Context, id pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteChallenge, id)
+	return err
+}
+
+const endChallenge = `-- name: EndChallenge :one
+UPDATE challenges
+SET is_active = FALSE
+WHERE id = $1
+RETURNING id, name, description, goal_km, start_at, ends_at, created_by, is_active
+`
+
+func (q *Queries) EndChallenge(ctx context.Context, id pgtype.UUID) (Challenge, error) {
+	row := q.db.QueryRow(ctx, endChallenge, id)
+	var i Challenge
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Description,
+		&i.GoalKm,
+		&i.StartAt,
+		&i.EndsAt,
+		&i.CreatedBy,
+		&i.IsActive,
+	)
+	return i, err
+}
+
+const getAllActiveChallenges = `-- name: GetAllActiveChallenges :many
+SELECT id, name, description, goal_km, start_at, ends_at, created_by, is_active FROM challenges
+WHERE is_active = TRUE
+`
+
+func (q *Queries) GetAllActiveChallenges(ctx context.Context) ([]Challenge, error) {
+	rows, err := q.db.Query(ctx, getAllActiveChallenges)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Challenge
+	for rows.Next() {
+		var i Challenge
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Description,
+			&i.GoalKm,
+			&i.StartAt,
+			&i.EndsAt,
+			&i.CreatedBy,
+			&i.IsActive,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getChallengeByID = `-- name: GetChallengeByID :one
+SELECT id, name, description, goal_km, start_at, ends_at, created_by, is_active FROM challenges
+WHERE id = $1
+`
+
+func (q *Queries) GetChallengeByID(ctx context.Context, id pgtype.UUID) (Challenge, error) {
+	row := q.db.QueryRow(ctx, getChallengeByID, id)
+	var i Challenge
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Description,
+		&i.GoalKm,
+		&i.StartAt,
+		&i.EndsAt,
+		&i.CreatedBy,
+		&i.IsActive,
+	)
+	return i, err
+}
+
+const getChallengesCreatedByUserID = `-- name: GetChallengesCreatedByUserID :many
+SELECT id, name, description, goal_km, start_at, ends_at, created_by, is_active FROM challenges
+WHERE created_by = $1
+ORDER BY start_at DESC
+`
+
+func (q *Queries) GetChallengesCreatedByUserID(ctx context.Context, createdBy pgtype.UUID) ([]Challenge, error) {
+	rows, err := q.db.Query(ctx, getChallengesCreatedByUserID, createdBy)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Challenge
+	for rows.Next() {
+		var i Challenge
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Description,
+			&i.GoalKm,
+			&i.StartAt,
+			&i.EndsAt,
+			&i.CreatedBy,
+			&i.IsActive,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getChallengesEndingBefore = `-- name: GetChallengesEndingBefore :many
+SELECT id, name, description, goal_km, start_at, ends_at, created_by, is_active FROM challenges
+WHERE is_active = TRUE AND start_at >= NOW() AND ends_at <= $1
+`
+
+func (q *Queries) GetChallengesEndingBefore(ctx context.Context, endsAt pgtype.Timestamptz) ([]Challenge, error) {
+	rows, err := q.db.Query(ctx, getChallengesEndingBefore, endsAt)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Challenge
+	for rows.Next() {
+		var i Challenge
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Description,
+			&i.GoalKm,
+			&i.StartAt,
+			&i.EndsAt,
+			&i.CreatedBy,
+			&i.IsActive,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const updateDescription = `-- name: UpdateDescription :one
+UPDATE challenges
+SET description = $1
+WHERE id = $2
+RETURNING id, name, description, goal_km, start_at, ends_at, created_by, is_active
+`
+
+type UpdateDescriptionParams struct {
+	Description string
+	ID          pgtype.UUID
+}
+
+func (q *Queries) UpdateDescription(ctx context.Context, arg UpdateDescriptionParams) (Challenge, error) {
+	row := q.db.QueryRow(ctx, updateDescription, arg.Description, arg.ID)
+	var i Challenge
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Description,
+		&i.GoalKm,
+		&i.StartAt,
+		&i.EndsAt,
+		&i.CreatedBy,
+		&i.IsActive,
+	)
+	return i, err
+}
 
 const create_challenge = `-- name: create_challenge :one
 INSERT INTO challenges(name, description, goal_km, ends_at, created_by)
@@ -38,191 +223,6 @@ func (q *Queries) create_challenge(ctx context.Context, arg create_challengePara
 		arg.EndsAt,
 		arg.CreatedBy,
 	)
-	var i Challenge
-	err := row.Scan(
-		&i.ID,
-		&i.Name,
-		&i.Description,
-		&i.GoalKm,
-		&i.StartAt,
-		&i.EndsAt,
-		&i.CreatedBy,
-		&i.IsActive,
-	)
-	return i, err
-}
-
-const delete_challenge = `-- name: delete_challenge :exec
-DELETE FROM challenges 
-WHERE id = $1
-`
-
-func (q *Queries) delete_challenge(ctx context.Context, id pgtype.UUID) error {
-	_, err := q.db.Exec(ctx, delete_challenge, id)
-	return err
-}
-
-const end_challenge = `-- name: end_challenge :one
-UPDATE challenges
-SET is_active = FALSE
-WHERE id = $1
-RETURNING id, name, description, goal_km, start_at, ends_at, created_by, is_active
-`
-
-func (q *Queries) end_challenge(ctx context.Context, id pgtype.UUID) (Challenge, error) {
-	row := q.db.QueryRow(ctx, end_challenge, id)
-	var i Challenge
-	err := row.Scan(
-		&i.ID,
-		&i.Name,
-		&i.Description,
-		&i.GoalKm,
-		&i.StartAt,
-		&i.EndsAt,
-		&i.CreatedBy,
-		&i.IsActive,
-	)
-	return i, err
-}
-
-const get_active_challenges = `-- name: get_active_challenges :many
-SELECT id, name, description, goal_km, start_at, ends_at, created_by, is_active FROM challenges
-WHERE is_active = TRUE
-`
-
-func (q *Queries) get_active_challenges(ctx context.Context) ([]Challenge, error) {
-	rows, err := q.db.Query(ctx, get_active_challenges)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []Challenge
-	for rows.Next() {
-		var i Challenge
-		if err := rows.Scan(
-			&i.ID,
-			&i.Name,
-			&i.Description,
-			&i.GoalKm,
-			&i.StartAt,
-			&i.EndsAt,
-			&i.CreatedBy,
-			&i.IsActive,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const get_challenge_by_id = `-- name: get_challenge_by_id :one
-SELECT id, name, description, goal_km, start_at, ends_at, created_by, is_active FROM challenges
-WHERE id = $1
-`
-
-func (q *Queries) get_challenge_by_id(ctx context.Context, id pgtype.UUID) (Challenge, error) {
-	row := q.db.QueryRow(ctx, get_challenge_by_id, id)
-	var i Challenge
-	err := row.Scan(
-		&i.ID,
-		&i.Name,
-		&i.Description,
-		&i.GoalKm,
-		&i.StartAt,
-		&i.EndsAt,
-		&i.CreatedBy,
-		&i.IsActive,
-	)
-	return i, err
-}
-
-const get_challenges_created_by_user_id = `-- name: get_challenges_created_by_user_id :many
-SELECT id, name, description, goal_km, start_at, ends_at, created_by, is_active FROM challenges
-WHERE created_by = $1
-ORDER BY start_at DESC
-`
-
-func (q *Queries) get_challenges_created_by_user_id(ctx context.Context, createdBy pgtype.UUID) ([]Challenge, error) {
-	rows, err := q.db.Query(ctx, get_challenges_created_by_user_id, createdBy)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []Challenge
-	for rows.Next() {
-		var i Challenge
-		if err := rows.Scan(
-			&i.ID,
-			&i.Name,
-			&i.Description,
-			&i.GoalKm,
-			&i.StartAt,
-			&i.EndsAt,
-			&i.CreatedBy,
-			&i.IsActive,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const get_challenges_ending_before = `-- name: get_challenges_ending_before :many
-SELECT id, name, description, goal_km, start_at, ends_at, created_by, is_active FROM challenges
-WHERE is_active = TRUE AND start_at >= NOW() AND ends_at <= $1
-`
-
-func (q *Queries) get_challenges_ending_before(ctx context.Context, endsAt pgtype.Timestamptz) ([]Challenge, error) {
-	rows, err := q.db.Query(ctx, get_challenges_ending_before, endsAt)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []Challenge
-	for rows.Next() {
-		var i Challenge
-		if err := rows.Scan(
-			&i.ID,
-			&i.Name,
-			&i.Description,
-			&i.GoalKm,
-			&i.StartAt,
-			&i.EndsAt,
-			&i.CreatedBy,
-			&i.IsActive,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const update_description = `-- name: update_description :one
-UPDATE challenges
-SET description = $1
-WHERE id = $2
-RETURNING id, name, description, goal_km, start_at, ends_at, created_by, is_active
-`
-
-type update_descriptionParams struct {
-	Description string
-	ID          pgtype.UUID
-}
-
-func (q *Queries) update_description(ctx context.Context, arg update_descriptionParams) (Challenge, error) {
-	row := q.db.QueryRow(ctx, update_description, arg.Description, arg.ID)
 	var i Challenge
 	err := row.Scan(
 		&i.ID,

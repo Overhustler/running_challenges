@@ -5,6 +5,6 @@ sql:
     engine: "postgresql"
     gen:
       go:
-        package: "repository"
+        package: "db"
         out: "internal/repository/db"
         sql_package: "pgx/v5"

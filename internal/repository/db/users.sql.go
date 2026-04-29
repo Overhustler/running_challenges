@@ -3,7 +3,7 @@
 //   sqlc v1.31.1
 // source: users.sql
 
-package repository
+package db
 
 import (
 	"context"
@@ -11,7 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const create_user = `-- name: create_user :one
+const createUser = `-- name: CreateUser :one
 INSERT INTO users (username, first_name, last_name, email, hashed_password)
 VALUES(
     $1,
@@ -22,7 +22,7 @@ VALUES(
 ) RETURNING id, username, first_name, last_name, email, hashed_password, created_at, last_login
 `
 
-type create_userParams struct {
+type CreateUserParams struct {
 	Username       string
 	FirstName      string
 	LastName       string
@@ -30,8 +30,8 @@ type create_userParams struct {
 	HashedPassword string
 }
 
-func (q *Queries) create_user(ctx context.Context, arg create_userParams) (User, error) {
-	row := q.db.QueryRow(ctx, create_user,
+func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
+	row := q.db.QueryRow(ctx, createUser,
 		arg.Username,
 		arg.FirstName,
 		arg.LastName,
@@ -52,24 +52,24 @@ func (q *Queries) create_user(ctx context.Context, arg create_userParams) (User,
 	return i, err
 }
 
-const delete_user = `-- name: delete_user :exec
+const deleteUser = `-- name: DeleteUser :exec
 DELETE FROM users
 WHERE id = $1
 `
 
-func (q *Queries) delete_user(ctx context.Context, id pgtype.UUID) error {
-	_, err := q.db.Exec(ctx, delete_user, id)
+func (q *Queries) DeleteUser(ctx context.Context, id pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteUser, id)
 	return err
 }
 
-const get_user_by_email = `-- name: get_user_by_email :one
+const getUserByEmail = `-- name: GetUserByEmail :one
 SELECT id, username, first_name, last_name, email, hashed_password, created_at, last_login
 FROM users
 WHERE email = $1
 `
 
-func (q *Queries) get_user_by_email(ctx context.Context, email string) (User, error) {
-	row := q.db.QueryRow(ctx, get_user_by_email, email)
+func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error) {
+	row := q.db.QueryRow(ctx, getUserByEmail, email)
 	var i User
 	err := row.Scan(
 		&i.ID,
@@ -84,14 +84,14 @@ func (q *Queries) get_user_by_email(ctx context.Context, email string) (User, er
 	return i, err
 }
 
-const get_user_by_id = `-- name: get_user_by_id :one
+const getUserByID = `-- name: GetUserByID :one
 SELECT id, username, first_name, last_name, email, hashed_password, created_at, last_login
 FROM users
 WHERE id = $1
 `
 
-func (q *Queries) get_user_by_id(ctx context.Context, id pgtype.UUID) (User, error) {
-	row := q.db.QueryRow(ctx, get_user_by_id, id)
+func (q *Queries) GetUserByID(ctx context.Context, id pgtype.UUID) (User, error) {
+	row := q.db.QueryRow(ctx, getUserByID, id)
 	var i User
 	err := row.Scan(
 		&i.ID,
@@ -106,14 +106,14 @@ func (q *Queries) get_user_by_id(ctx context.Context, id pgtype.UUID) (User, err
 	return i, err
 }
 
-const get_user_by_username = `-- name: get_user_by_username :one
+const getUserByUsername = `-- name: GetUserByUsername :one
 SELECT id, username, first_name, last_name, email, hashed_password, created_at, last_login
 FROM users
 WHERE username = $1
 `
 
-func (q *Queries) get_user_by_username(ctx context.Context, username string) (User, error) {
-	row := q.db.QueryRow(ctx, get_user_by_username, username)
+func (q *Queries) GetUserByUsername(ctx context.Context, username string) (User, error) {
+	row := q.db.QueryRow(ctx, getUserByUsername, username)
 	var i User
 	err := row.Scan(
 		&i.ID,
@@ -128,20 +128,20 @@ func (q *Queries) get_user_by_username(ctx context.Context, username string) (Us
 	return i, err
 }
 
-const update_email = `-- name: update_email :one
+const updateEmail = `-- name: UpdateEmail :one
 UPDATE users
 SET email = $1
 WHERE id = $2
 RETURNING id, username, first_name, last_name, email, hashed_password, created_at, last_login
 `
 
-type update_emailParams struct {
+type UpdateEmailParams struct {
 	Email string
 	ID    pgtype.UUID
 }
 
-func (q *Queries) update_email(ctx context.Context, arg update_emailParams) (User, error) {
-	row := q.db.QueryRow(ctx, update_email, arg.Email, arg.ID)
+func (q *Queries) UpdateEmail(ctx context.Context, arg UpdateEmailParams) (User, error) {
+	row := q.db.QueryRow(ctx, updateEmail, arg.Email, arg.ID)
 	var i User
 	err := row.Scan(
 		&i.ID,
@@ -156,20 +156,20 @@ func (q *Queries) update_email(ctx context.Context, arg update_emailParams) (Use
 	return i, err
 }
 
-const update_password = `-- name: update_password :one
+const updatePassword = `-- name: UpdatePassword :one
 UPDATE users
 SET hashed_password = $1
 WHERE id = $2
 RETURNING id, username, first_name, last_name, email, hashed_password, created_at, last_login
 `
 
-type update_passwordParams struct {
+type UpdatePasswordParams struct {
 	HashedPassword string
 	ID             pgtype.UUID
 }
 
-func (q *Queries) update_password(ctx context.Context, arg update_passwordParams) (User, error) {
-	row := q.db.QueryRow(ctx, update_password, arg.HashedPassword, arg.ID)
+func (q *Queries) UpdatePassword(ctx context.Context, arg UpdatePasswordParams) (User, error) {
+	row := q.db.QueryRow(ctx, updatePassword, arg.HashedPassword, arg.ID)
 	var i User
 	err := row.Scan(
 		&i.ID,

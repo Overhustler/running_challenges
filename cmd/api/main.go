@@ -4,8 +4,9 @@ import (
 	"context"
 	"log"
 	"os"
-	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
+	"github.com/overhustler/running-challenges/internal/repository/db"
 )
 
 func main() {
@@ -18,11 +19,13 @@ func main() {
 	if !exists {
 		log.Fatal("Database url is not set")
 	}
-	dbConn, err := pgx.Connect(context.Background(), db_url)
+	dbPool, err := pgxpool.New(context.Background(), db_url)
 	if err != nil {
 		log.Fatalf("problem creating database connection: %v", err)
 	}
-	defer dbConn.Close(context.Background())
+	defer dbPool.Close()
+	_ = db.New(dbPool)
+	
 	log.Println("Connected to database")
 }
 

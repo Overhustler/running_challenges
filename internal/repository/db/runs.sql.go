@@ -3,7 +3,7 @@
 //   sqlc v1.31.1
 // source: runs.sql
 
-package repository
+package db
 
 import (
 	"context"
@@ -11,7 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const create_run = `-- name: create_run :one
+const createRun = `-- name: CreateRun :one
 INSERT INTO runs(distance, start_time, end_time, perceived_effort, notes, user_id)
 VALUES(
     $1,
@@ -23,7 +23,7 @@ VALUES(
 ) RETURNING id, distance, start_time, end_time, perceived_effort, notes, user_id
 `
 
-type create_runParams struct {
+type CreateRunParams struct {
 	Distance        pgtype.Numeric
 	StartTime       pgtype.Timestamp
 	EndTime         pgtype.Timestamp
@@ -32,8 +32,8 @@ type create_runParams struct {
 	UserID          pgtype.UUID
 }
 
-func (q *Queries) create_run(ctx context.Context, arg create_runParams) (Run, error) {
-	row := q.db.QueryRow(ctx, create_run,
+func (q *Queries) CreateRun(ctx context.Context, arg CreateRunParams) (Run, error) {
+	row := q.db.QueryRow(ctx, createRun,
 		arg.Distance,
 		arg.StartTime,
 		arg.EndTime,
@@ -54,23 +54,94 @@ func (q *Queries) create_run(ctx context.Context, arg create_runParams) (Run, er
 	return i, err
 }
 
-const delete_run = `-- name: delete_run :exec
-DELETE FROM runs
-WHERE id = $1
+const getRecentRuns = `-- name: GetRecentRuns :many
+SELECT id, distance, start_time, end_time, perceived_effort, notes, user_id FROM runs 
+WHERE start_time > $1
+ORDER BY start_time DESC
+LIMIT $2
 `
 
-func (q *Queries) delete_run(ctx context.Context, id pgtype.UUID) error {
-	_, err := q.db.Exec(ctx, delete_run, id)
-	return err
+type GetRecentRunsParams struct {
+	StartTime pgtype.Timestamp
+	Limit     int32
 }
 
-const get_run = `-- name: get_run :one
+func (q *Queries) GetRecentRuns(ctx context.Context, arg GetRecentRunsParams) ([]Run, error) {
+	rows, err := q.db.Query(ctx, getRecentRuns, arg.StartTime, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Run
+	for rows.Next() {
+		var i Run
+		if err := rows.Scan(
+			&i.ID,
+			&i.Distance,
+			&i.StartTime,
+			&i.EndTime,
+			&i.PerceivedEffort,
+			&i.Notes,
+			&i.UserID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getRecentRunsUserID = `-- name: GetRecentRunsUserID :many
+SELECT id, distance, start_time, end_time, perceived_effort, notes, user_id FROM runs 
+WHERE start_time > $1 AND user_id = $2
+ORDER BY start_time DESC
+LIMIT $3
+`
+
+type GetRecentRunsUserIDParams struct {
+	StartTime pgtype.Timestamp
+	UserID    pgtype.UUID
+	Limit     int32
+}
+
+func (q *Queries) GetRecentRunsUserID(ctx context.Context, arg GetRecentRunsUserIDParams) ([]Run, error) {
+	rows, err := q.db.Query(ctx, getRecentRunsUserID, arg.StartTime, arg.UserID, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Run
+	for rows.Next() {
+		var i Run
+		if err := rows.Scan(
+			&i.ID,
+			&i.Distance,
+			&i.StartTime,
+			&i.EndTime,
+			&i.PerceivedEffort,
+			&i.Notes,
+			&i.UserID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getRun = `-- name: GetRun :one
 SELECT id, distance, start_time, end_time, perceived_effort, notes, user_id FROM runs
 WHERE id = $1
 `
 
-func (q *Queries) get_run(ctx context.Context, id pgtype.UUID) (Run, error) {
-	row := q.db.QueryRow(ctx, get_run, id)
+func (q *Queries) GetRun(ctx context.Context, id pgtype.UUID) (Run, error) {
+	row := q.db.QueryRow(ctx, getRun, id)
 	var i Run
 	err := row.Scan(
 		&i.ID,
@@ -84,60 +155,21 @@ func (q *Queries) get_run(ctx context.Context, id pgtype.UUID) (Run, error) {
 	return i, err
 }
 
-const get_runs_by_date_range = `-- name: get_runs_by_date_range :many
-SELECT id, distance, start_time, end_time, perceived_effort, notes, user_id FROM runs
-WHERE start_time BETWEEN $1 AND $2 
-ORDER BY start_time DESC
-`
-
-type get_runs_by_date_rangeParams struct {
-	StartTime   pgtype.Timestamp
-	StartTime_2 pgtype.Timestamp
-}
-
-func (q *Queries) get_runs_by_date_range(ctx context.Context, arg get_runs_by_date_rangeParams) ([]Run, error) {
-	rows, err := q.db.Query(ctx, get_runs_by_date_range, arg.StartTime, arg.StartTime_2)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []Run
-	for rows.Next() {
-		var i Run
-		if err := rows.Scan(
-			&i.ID,
-			&i.Distance,
-			&i.StartTime,
-			&i.EndTime,
-			&i.PerceivedEffort,
-			&i.Notes,
-			&i.UserID,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const get_runs_by_date_range_user_id = `-- name: get_runs_by_date_range_user_id :many
+const getRunsByDateRangeUserID = `-- name: GetRunsByDateRangeUserID :many
 SELECT id, distance, start_time, end_time, perceived_effort, notes, user_id FROM runs
 WHERE (start_time BETWEEN $1 AND $2) 
 AND user_id = $3 
 ORDER BY start_time DESC
 `
 
-type get_runs_by_date_range_user_idParams struct {
+type GetRunsByDateRangeUserIDParams struct {
 	StartTime   pgtype.Timestamp
 	StartTime_2 pgtype.Timestamp
 	UserID      pgtype.UUID
 }
 
-func (q *Queries) get_runs_by_date_range_user_id(ctx context.Context, arg get_runs_by_date_range_user_idParams) ([]Run, error) {
-	rows, err := q.db.Query(ctx, get_runs_by_date_range_user_id, arg.StartTime, arg.StartTime_2, arg.UserID)
+func (q *Queries) GetRunsByDateRangeUserID(ctx context.Context, arg GetRunsByDateRangeUserIDParams) ([]Run, error) {
+	rows, err := q.db.Query(ctx, getRunsByDateRangeUserID, arg.StartTime, arg.StartTime_2, arg.UserID)
 	if err != nil {
 		return nil, err
 	}
@@ -162,6 +194,88 @@ func (q *Queries) get_runs_by_date_range_user_id(ctx context.Context, arg get_ru
 		return nil, err
 	}
 	return items, nil
+}
+
+const getRunsByUserID = `-- name: GetRunsByUserID :many
+SELECT id, distance, start_time, end_time, perceived_effort, notes, user_id FROM runs
+where user_id = $1
+`
+
+func (q *Queries) GetRunsByUserID(ctx context.Context, userID pgtype.UUID) ([]Run, error) {
+	rows, err := q.db.Query(ctx, getRunsByUserID, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Run
+	for rows.Next() {
+		var i Run
+		if err := rows.Scan(
+			&i.ID,
+			&i.Distance,
+			&i.StartTime,
+			&i.EndTime,
+			&i.PerceivedEffort,
+			&i.Notes,
+			&i.UserID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getRunsForDateRange = `-- name: GetRunsForDateRange :many
+SELECT id, distance, start_time, end_time, perceived_effort, notes, user_id FROM runs
+WHERE start_time BETWEEN $1 AND $2 
+ORDER BY start_time DESC
+`
+
+type GetRunsForDateRangeParams struct {
+	StartTime   pgtype.Timestamp
+	StartTime_2 pgtype.Timestamp
+}
+
+func (q *Queries) GetRunsForDateRange(ctx context.Context, arg GetRunsForDateRangeParams) ([]Run, error) {
+	rows, err := q.db.Query(ctx, getRunsForDateRange, arg.StartTime, arg.StartTime_2)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Run
+	for rows.Next() {
+		var i Run
+		if err := rows.Scan(
+			&i.ID,
+			&i.Distance,
+			&i.StartTime,
+			&i.EndTime,
+			&i.PerceivedEffort,
+			&i.Notes,
+			&i.UserID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const delete_run = `-- name: delete_run :exec
+DELETE FROM runs
+WHERE id = $1
+`
+
+func (q *Queries) delete_run(ctx context.Context, id pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, delete_run, id)
+	return err
 }
 
 const get_runs_by_distance_range = `-- name: get_runs_by_distance_range :many
@@ -218,120 +332,6 @@ type get_runs_by_distance_range_for_userParams struct {
 
 func (q *Queries) get_runs_by_distance_range_for_user(ctx context.Context, arg get_runs_by_distance_range_for_userParams) ([]Run, error) {
 	rows, err := q.db.Query(ctx, get_runs_by_distance_range_for_user, arg.Distance, arg.Distance_2, arg.UserID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []Run
-	for rows.Next() {
-		var i Run
-		if err := rows.Scan(
-			&i.ID,
-			&i.Distance,
-			&i.StartTime,
-			&i.EndTime,
-			&i.PerceivedEffort,
-			&i.Notes,
-			&i.UserID,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const get_runs_by_user_id = `-- name: get_runs_by_user_id :many
-SELECT id, distance, start_time, end_time, perceived_effort, notes, user_id FROM runs
-where user_id = $1
-`
-
-func (q *Queries) get_runs_by_user_id(ctx context.Context, userID pgtype.UUID) ([]Run, error) {
-	rows, err := q.db.Query(ctx, get_runs_by_user_id, userID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []Run
-	for rows.Next() {
-		var i Run
-		if err := rows.Scan(
-			&i.ID,
-			&i.Distance,
-			&i.StartTime,
-			&i.EndTime,
-			&i.PerceivedEffort,
-			&i.Notes,
-			&i.UserID,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const get_runs_recent = `-- name: get_runs_recent :many
-SELECT id, distance, start_time, end_time, perceived_effort, notes, user_id FROM runs 
-WHERE start_time > $1
-ORDER BY start_time DESC
-LIMIT $2
-`
-
-type get_runs_recentParams struct {
-	StartTime pgtype.Timestamp
-	Limit     int32
-}
-
-func (q *Queries) get_runs_recent(ctx context.Context, arg get_runs_recentParams) ([]Run, error) {
-	rows, err := q.db.Query(ctx, get_runs_recent, arg.StartTime, arg.Limit)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []Run
-	for rows.Next() {
-		var i Run
-		if err := rows.Scan(
-			&i.ID,
-			&i.Distance,
-			&i.StartTime,
-			&i.EndTime,
-			&i.PerceivedEffort,
-			&i.Notes,
-			&i.UserID,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const get_runs_recent_user_id = `-- name: get_runs_recent_user_id :many
-SELECT id, distance, start_time, end_time, perceived_effort, notes, user_id FROM runs 
-WHERE start_time > $1 AND user_id = $2
-ORDER BY start_time DESC
-LIMIT $3
-`
-
-type get_runs_recent_user_idParams struct {
-	StartTime pgtype.Timestamp
-	UserID    pgtype.UUID
-	Limit     int32
-}
-
-func (q *Queries) get_runs_recent_user_id(ctx context.Context, arg get_runs_recent_user_idParams) ([]Run, error) {
-	rows, err := q.db.Query(ctx, get_runs_recent_user_id, arg.StartTime, arg.UserID, arg.Limit)
 	if err != nil {
 		return nil, err
 	}

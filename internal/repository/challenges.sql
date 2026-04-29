@@ -8,34 +8,34 @@ VALUES(
     $5
 ) RETURNING *;
 
--- name: get_challenge_by_id :one
+-- name: GetChallengeByID :one
 SELECT * FROM challenges
 WHERE id = $1;
 
--- name: get_active_challenges :many
+-- name: GetAllActiveChallenges :many
 SELECT * FROM challenges
 WHERE is_active = TRUE;
 
--- name: get_challenges_ending_before :many
+-- name: GetChallengesEndingBefore :many
 SELECT * FROM challenges
 WHERE is_active = TRUE AND start_at >= NOW() AND ends_at <= $1;
 
--- name: get_challenges_created_by_user_id :many
+-- name: GetChallengesCreatedByUserID :many
 SELECT * FROM challenges
 WHERE created_by = $1
 ORDER BY start_at DESC;
 
--- name: delete_challenge :exec
+-- name: DeleteChallenge :exec
 DELETE FROM challenges 
 WHERE id = $1;
 
--- name: end_challenge :one
+-- name: EndChallenge :one
 UPDATE challenges
 SET is_active = FALSE
 WHERE id = $1
 RETURNING *;
 
--- name: update_description :one
+-- name: UpdateDescription :one
 UPDATE challenges
 SET description = $1
 WHERE id = $2

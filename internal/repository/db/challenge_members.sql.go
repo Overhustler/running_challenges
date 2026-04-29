@@ -3,7 +3,7 @@
 //   sqlc v1.31.1
 // source: challenge_members.sql
 
-package repository
+package db
 
 import (
 	"context"
@@ -11,13 +11,13 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const get_all_challenge_users = `-- name: get_all_challenge_users :many
+const getAlllCHallengesMembers = `-- name: GetAlllCHallengesMembers :many
 SELECT challenge_id, user_id FROM challenge_members
 WHERE challenge_id = $1
 `
 
-func (q *Queries) get_all_challenge_users(ctx context.Context, challengeID pgtype.UUID) ([]ChallengeMember, error) {
-	rows, err := q.db.Query(ctx, get_all_challenge_users, challengeID)
+func (q *Queries) GetAlllCHallengesMembers(ctx context.Context, challengeID pgtype.UUID) ([]ChallengeMember, error) {
+	rows, err := q.db.Query(ctx, getAlllCHallengesMembers, challengeID)
 	if err != nil {
 		return nil, err
 	}
@@ -36,7 +36,7 @@ func (q *Queries) get_all_challenge_users(ctx context.Context, challengeID pgtyp
 	return items, nil
 }
 
-const get_leaderboard = `-- name: get_leaderboard :many
+const getLeaderBoard = `-- name: GetLeaderBoard :many
 SELECT cm.user_id, SUM(r.distance) AS total_km
 FROM challenge_members AS cm
 JOIN runs AS r ON cm.user_id = r.user_id
@@ -48,25 +48,25 @@ ORDER BY total_km DESC
 LIMIT $2
 `
 
-type get_leaderboardParams struct {
+type GetLeaderBoardParams struct {
 	ChallengeID pgtype.UUID
 	Limit       int32
 }
 
-type get_leaderboardRow struct {
+type GetLeaderBoardRow struct {
 	UserID  pgtype.UUID
 	TotalKm int64
 }
 
-func (q *Queries) get_leaderboard(ctx context.Context, arg get_leaderboardParams) ([]get_leaderboardRow, error) {
-	rows, err := q.db.Query(ctx, get_leaderboard, arg.ChallengeID, arg.Limit)
+func (q *Queries) GetLeaderBoard(ctx context.Context, arg GetLeaderBoardParams) ([]GetLeaderBoardRow, error) {
+	rows, err := q.db.Query(ctx, getLeaderBoard, arg.ChallengeID, arg.Limit)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []get_leaderboardRow
+	var items []GetLeaderBoardRow
 	for rows.Next() {
-		var i get_leaderboardRow
+		var i GetLeaderBoardRow
 		if err := rows.Scan(&i.UserID, &i.TotalKm); err != nil {
 			return nil, err
 		}
@@ -78,13 +78,13 @@ func (q *Queries) get_leaderboard(ctx context.Context, arg get_leaderboardParams
 	return items, nil
 }
 
-const get_user_challenges = `-- name: get_user_challenges :many
+const getUserChallenge = `-- name: GetUserChallenge :many
 SELECT challenge_id, user_id FROM challenge_members
 WHERE user_id = $1
 `
 
-func (q *Queries) get_user_challenges(ctx context.Context, userID pgtype.UUID) ([]ChallengeMember, error) {
-	rows, err := q.db.Query(ctx, get_user_challenges, userID)
+func (q *Queries) GetUserChallenge(ctx context.Context, userID pgtype.UUID) ([]ChallengeMember, error) {
+	rows, err := q.db.Query(ctx, getUserChallenge, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -103,7 +103,7 @@ func (q *Queries) get_user_challenges(ctx context.Context, userID pgtype.UUID) (
 	return items, nil
 }
 
-const join_challenge = `-- name: join_challenge :one
+const joinChallenge = `-- name: JoinChallenge :one
 INSERT INTO challenge_members(challenge_id, user_id)
 VALUES(
     $1,
@@ -111,29 +111,29 @@ VALUES(
 ) RETURNING challenge_id, user_id
 `
 
-type join_challengeParams struct {
+type JoinChallengeParams struct {
 	ChallengeID pgtype.UUID
 	UserID      pgtype.UUID
 }
 
-func (q *Queries) join_challenge(ctx context.Context, arg join_challengeParams) (ChallengeMember, error) {
-	row := q.db.QueryRow(ctx, join_challenge, arg.ChallengeID, arg.UserID)
+func (q *Queries) JoinChallenge(ctx context.Context, arg JoinChallengeParams) (ChallengeMember, error) {
+	row := q.db.QueryRow(ctx, joinChallenge, arg.ChallengeID, arg.UserID)
 	var i ChallengeMember
 	err := row.Scan(&i.ChallengeID, &i.UserID)
 	return i, err
 }
 
-const leave_challenge = `-- name: leave_challenge :exec
+const leaveChallenge = `-- name: LeaveChallenge :exec
 DELETE FROM challenge_members
 WHERE user_id = $1 AND challenge_id = $2
 `
 
-type leave_challengeParams struct {
+type LeaveChallengeParams struct {
 	UserID      pgtype.UUID
 	ChallengeID pgtype.UUID
 }
 
-func (q *Queries) leave_challenge(ctx context.Context, arg leave_challengeParams) error {
-	_, err := q.db.Exec(ctx, leave_challenge, arg.UserID, arg.ChallengeID)
+func (q *Queries) LeaveChallenge(ctx context.Context, arg LeaveChallengeParams) error {
+	_, err := q.db.Exec(ctx, leaveChallenge, arg.UserID, arg.ChallengeID)
 	return err
 }

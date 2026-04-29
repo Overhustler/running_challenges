@@ -3,7 +3,7 @@
 //   sqlc v1.31.1
 // source: personal_bests.sql
 
-package repository
+package db
 
 import (
 	"context"
@@ -11,13 +11,13 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const get_all_personal_bests_for_user = `-- name: get_all_personal_bests_for_user :many
+const getAllPersonalBests = `-- name: GetAllPersonalBests :many
 SELECT user_id, category, duration_seconds FROM personal_bests
 WHERE user_id = $1
 `
 
-func (q *Queries) get_all_personal_bests_for_user(ctx context.Context, userID pgtype.UUID) ([]PersonalBest, error) {
-	rows, err := q.db.Query(ctx, get_all_personal_bests_for_user, userID)
+func (q *Queries) GetAllPersonalBests(ctx context.Context, userID pgtype.UUID) ([]PersonalBest, error) {
+	rows, err := q.db.Query(ctx, getAllPersonalBests, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -36,25 +36,25 @@ func (q *Queries) get_all_personal_bests_for_user(ctx context.Context, userID pg
 	return items, nil
 }
 
-const get_personal_best_by_category = `-- name: get_personal_best_by_category :one
+const getPersonBestByCategory = `-- name: GetPersonBestByCategory :one
 SELECT user_id, category, duration_seconds FROM personal_bests
 WHERE user_id = $1
 AND category = $2
 `
 
-type get_personal_best_by_categoryParams struct {
+type GetPersonBestByCategoryParams struct {
 	UserID   pgtype.UUID
 	Category CategoryType
 }
 
-func (q *Queries) get_personal_best_by_category(ctx context.Context, arg get_personal_best_by_categoryParams) (PersonalBest, error) {
-	row := q.db.QueryRow(ctx, get_personal_best_by_category, arg.UserID, arg.Category)
+func (q *Queries) GetPersonBestByCategory(ctx context.Context, arg GetPersonBestByCategoryParams) (PersonalBest, error) {
+	row := q.db.QueryRow(ctx, getPersonBestByCategory, arg.UserID, arg.Category)
 	var i PersonalBest
 	err := row.Scan(&i.UserID, &i.Category, &i.DurationSeconds)
 	return i, err
 }
 
-const upsert_personal_best = `-- name: upsert_personal_best :one
+const upsertPersonalBests = `-- name: UpsertPersonalBests :one
 INSERT INTO personal_bests(user_id, category, duration_seconds)
 VALUES(
     $1,
@@ -66,14 +66,14 @@ DO UPDATE SET duration_seconds = $3
 RETURNING user_id, category, duration_seconds
 `
 
-type upsert_personal_bestParams struct {
+type UpsertPersonalBestsParams struct {
 	UserID          pgtype.UUID
 	Category        CategoryType
 	DurationSeconds int32
 }
 
-func (q *Queries) upsert_personal_best(ctx context.Context, arg upsert_personal_bestParams) (PersonalBest, error) {
-	row := q.db.QueryRow(ctx, upsert_personal_best, arg.UserID, arg.Category, arg.DurationSeconds)
+func (q *Queries) UpsertPersonalBests(ctx context.Context, arg UpsertPersonalBestsParams) (PersonalBest, error) {
+	row := q.db.QueryRow(ctx, upsertPersonalBests, arg.UserID, arg.Category, arg.DurationSeconds)
 	var i PersonalBest
 	err := row.Scan(&i.UserID, &i.Category, &i.DurationSeconds)
 	return i, err
